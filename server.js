@@ -1,14 +1,17 @@
 import express from "express";
+import cors from "cors";
 import { franc } from "franc";
 
 const app = express();
+
+app.use(cors());
 app.use(express.json());
 
-// Mapeo ISO-639-3 -> ISO-639-1
+// Mapeo ISO-639-3 → ISO-639-1 (solo tus idiomas)
 const allowedLanguages = {
     eng: "en",
     spa: "es",
-    cmn: "zh",   // Mandarin
+    cmn: "zh",
     por: "pt",
     rus: "ru",
     hin: "hi",
@@ -40,24 +43,38 @@ const allowedLanguages = {
     msa: "ms"
 };
 
-app.post("/detect", (req, res) => {
-    const text = req.body.text;
-
-    if (!text || text.length < 20) {
-        return res.json({ language: "unknown" });
-    }
-
-    const detected = franc(text, {
-        only: Object.keys(allowedLanguages)
-    });
-
-    if (detected === "und") {
-        return res.json({ language: "unknown" });
-    }
-
+// Ruta de prueba
+app.get("/", (req, res) => {
     res.json({
-        language: allowedLanguages[detected] || "unknown"
+        status: "Language API running",
+        supportedLanguages: Object.values(allowedLanguages)
     });
+});
+
+// Ruta principal
+app.post("/detect", (req, res) => {
+    try {
+        const text = req.body.text;
+
+        if (!text || text.length < 20) {
+            return res.json({ language: "unknown" });
+        }
+
+        const detected = franc(text, {
+            only: Object.keys(allowedLanguages)
+        });
+
+        if (detected === "und") {
+            return res.json({ language: "unknown" });
+        }
+
+        res.json({
+            language: allowedLanguages[detected] || "unknown"
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: "Detection failed" });
+    }
 });
 
 const PORT = process.env.PORT || 3000;
